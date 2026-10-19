@@ -1,0 +1,150 @@
+{
+  "project": {
+    "name": "Rently",
+    "alternativeName": "Rentio",
+    "description": "Plataforma simplificada de renta de propiedades en EE.UU. enfocada en eliminar la fricción, mostrar información transparente y cobrar una tarifa única de $25 USD por verificación de perfil.",
+    "target_audience": "Inquilinos (sin registro previo) y Administradores de propiedades/Inmobiliarias (con registro).",
+    "tech_stack": {
+      "frontend": ["Next.js 14 (App Router)", "React", "TypeScript", "Tailwind CSS", "Shadcn UI"],
+      "backend": ["Next.js API Routes", "Node.js"],
+      "database": ["PostgreSQL", "Prisma ORM"],
+      "authentication": ["NextAuth.js (solo para managers)"],
+      "payments": ["Stripe (Stripe México)"],
+      "storage": ["Cloudinary", "AWS S3"],
+      "deployment": ["Vercel", "Railway/Neon"]
+    }
+  },
+  "database_schema": {
+    "models": {
+      "Property": {
+        "id": "String (UUID, Primary Key)",
+        "address": "String",
+        "city": "String",
+        "state": "String",
+        "zip": "String",
+        "price": "Float",
+        "bedrooms": "Int",
+        "bathrooms": "Float",
+        "sqft": "Int",
+        "type": "String (Apartment, House, Condo)",
+        "yearBuilt": "Int",
+        "description": "String",
+        "photos": "String[]",
+        "amenities": "String[]",
+        "petPolicy": "Json",
+        "parkingInfo": "String",
+        "managerName": "String",
+        "managerPhone": "String (Unique)",
+        "managerEmail": "String",
+        "managerId": "String (Foreign Key -> User)",
+        "status": "String (active, paused)",
+        "createdAt": "DateTime"
+      },
+      "Application": {
+        "id": "String (UUID, Primary Key)",
+        "propertyId": "String (Foreign Key -> Property)",
+        "applicantName": "String",
+        "applicantEmail": "String",
+        "applicantPhone": "String",
+        "employmentInfo": "String",
+        "rentalHistory": "String",
+        "status": "String (pending, approved, rejected)",
+        "stripePaymentId": "String",
+        "createdAt": "DateTime"
+      },
+      "User": {
+        "id": "String (UUID, Primary Key)",
+        "name": "String",
+        "email": "String (Unique)",
+        "passwordHash": "String",
+        "companyName": "String",
+        "phone": "String",
+        "properties": "Property[] (Relation)"
+      }
+    }
+  },
+  "api_routes": [
+    {
+      "path": "/api/properties",
+      "method": "GET",
+      "description": "Búsqueda pública con filtros (ciudad, zip, precio, camas, baños). No requiere auth."
+    },
+    {
+      "path": "/api/properties/[id]",
+      "method": "GET",
+      "description": "Detalle público de la propiedad, incluyendo el teléfono único del manager."
+    },
+    {
+      "path": "/api/applications",
+      "method": "POST",
+      "description": "Recibe datos del formulario, valida el estado para el fee (CA: $25, NY: $20), crea sesión de Stripe Checkout. No requiere auth."
+    },
+    {
+      "path": "/api/webhooks/stripe",
+      "method": "POST",
+      "description": "Confirma el pago, actualiza Application a 'paid' y envía email de felicitación."
+    },
+    {
+      "path": "/api/properties",
+      "method": "POST",
+      "description": "Crear nueva propiedad. Requiere auth (manager)."
+    },
+    {
+      "path": "/api/manager/properties",
+      "method": "GET",
+      "description": "Listar propiedades del manager autenticado. Requiere auth."
+    }
+  ],
+  "frontend_pages": {
+    "public": [
+      {
+        "route": "/",
+        "component": "Home",
+        "features": ["SearchBar (City, Zip)", "Property Grid (Destacadas)", "CTA 'Publicar Propiedad'"]
+      },
+      {
+        "route": "/search",
+        "component": "SearchResults",
+        "features": ["Sidebar Filters (Price, Beds, Pets)", "Property Cards (Foto, Precio, Dirección, Badge 'Verificado')"]
+      },
+      {
+        "route": "/property/[id]",
+        "component": "PropertyDetail",
+        "features": ["Header (Dirección, Precio, Teléfono Manager)", "Gallery (Fotos, Tour Virtual, Plano)", "Specs (Camas, Baños, Sqft)", "Amenities (Lista con iconos)", "Policies (Pet Policy, Fee $25)", "Botón 'Apply Now' (Abre Modal)"]
+      },
+      {
+        "route": "/apply/[id]",
+        "component": "ApplicationForm",
+        "features": ["Paso 1: Datos Personales", "Paso 2: Historial e Ingresos", "Paso 3: Consentimiento de Privacidad y Pago ($25)", "Integración Stripe Checkout", "Pantalla de Éxito post-pago"]
+      }
+    ],
+    "private_manager": [
+      {
+        "route": "/login",
+        "component": "ManagerLogin",
+        "features": ["Formulario de Login (NextAuth)"]
+      },
+      {
+        "route": "/dashboard",
+        "component": "ManagerDashboard",
+        "features": ["Lista de propiedades (Activas/Pausadas)", "Ver aplicaciones recibidas", "Wizard 'Crear Nueva Propiedad'"]
+      }
+    ]
+  },
+  "business_logic": {
+    "privacy_policy": "Los datos del inquilino no se comparten con terceros, solo con el manager de la propiedad seleccionada.",
+    "stripe_fee_cap": {
+      "default": 25,
+      "NY": 20,
+      "CA": 25
+    },
+    "application_flow": [
+      "1. Inquilino busca propiedad sin registrarse.",
+      "2. Ve detalles y hace clic en 'Apply Now'.",
+      "3. Llena formulario y paga fee vía Stripe.",
+      "4. Se envía email automático: 'Felicidades, estás más cerca de vivir en [Dirección]'.",
+      "5. Manager recibe notificación y revisa el perfil.",
+      "6. Manager decide si aprueba o rechaza."
+    ]
+  }
+}
